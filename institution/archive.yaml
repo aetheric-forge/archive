@@ -1,0 +1,19 @@
+descriptor:
+  id: archive
+  name: Archive
+  version: 1.0.0
+  description: Durable archival storage and typed retrieval.
+dependencies: []
+domains: []
+organizations: []
+roles: []
+capabilities: []
+resources:
+  - id: archive
+    name: Archive storage
+    type: archive
+    ownership: owned
+workflows: []
+policies: []
+initialState:
+  configuration: {}
