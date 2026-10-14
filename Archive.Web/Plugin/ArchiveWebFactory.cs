@@ -46,7 +46,7 @@ public sealed class ArchiveWebFactory : IInstitutionFactory
         services.AddKeyedSingleton<IArchiveProvider>("Archive", (sp, _) => new S3ArchiveProvider(sp.GetRequiredKeyedService<IAmazonS3>("Archive"),
             "MinIO", settings.GetValue("S3:BucketName", "forge-campus-archive")!));
         services.AddKeyedSingleton<IArchiveService>("Archive", (sp, _) => new ArchiveService(sp.GetKeyedServices<IArchiveProvider>("Archive")));
-        services.AddKeyedSingleton<IArchiveVault>("Archive", (sp, _) => new ArchiveVault(sp.GetKeyedServices<IArchiveProvider>("Archive").First()));
+        services.AddKeyedSingleton<IArchiveVault>("Archive", (sp, _) => new RoutingVault(sp.GetRequiredKeyedService<IArchiveService>("Archive")));
         services.AddKeyedSingleton<IArchivist>("Archive", (sp, _) => new Archivist(sp.GetRequiredKeyedService<IArchiveService>("Archive"),
             new Team<IArchiveClerk>([]), [new JsonArchiveSerializer()]));
         services.AddKeyedSingleton<IArchive>("Archive", (sp, _) => parent(sp) is { } owner
@@ -64,4 +64,14 @@ public sealed class ArchiveWebFactory : IInstitutionFactory
     private IArchive CreateArchive(IServiceProvider services, IInstitution? parent) =>
         new AethericForge.Runtime.Institutions.Archive.Archive(new ArchiveContext(Template, services, parent),
             services.GetRequiredKeyedService<IArchiveVault>("Archive"), services.GetRequiredKeyedService<IArchivist>("Archive"));
+    // Resolve each reference through the provider registry, including pre-existing contributed stores.
+    private sealed class RoutingVault(IArchiveService archive) : IArchiveVault
+    {
+        public Task<IArchiveReference> ArchiveAsync(Stream content, IArchiveMetadata? metadata = null, CancellationToken ct = default) => archive.ArchiveAsync(content, metadata, ct);
+        public Task<Stream> RetrieveAsync(IArchiveReference reference, CancellationToken ct = default) => archive.RetrieveAsync(reference, ct);
+        public Task<IArchiveMetadata?> StatAsync(IArchiveReference reference, CancellationToken ct = default) => archive.StatAsync(reference, ct);
+        public Task<bool> ExistsAsync(IArchiveReference reference, CancellationToken ct = default) => archive.ExistsAsync(reference, ct);
+        public Task<bool> DeleteAsync(IArchiveReference reference, CancellationToken ct = default) => archive.DeleteAsync(reference, ct);
+    }
+
 }

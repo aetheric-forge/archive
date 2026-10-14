@@ -28,10 +28,17 @@ public sealed class ArchiveBoundaryTests
         new ArchiveWebFactory().ConfigureWebServices(services, configuration, _ => null);
         services.RemoveAllKeyed<IArchiveProvider>("Archive");
         services.AddKeyedSingleton<IArchiveProvider>("Archive", storage);
+        var decisions = new InMemoryArchiveProvider("adr-campus");
+        await decisions.PutAsync("administration/catalog-v1", new MemoryStream(System.Text.Encoding.UTF8.GetBytes("existing administration")));
+        services.AddKeyedSingleton<IArchiveProvider>("Archive", decisions);
         using var provider = services.BuildServiceProvider();
         var module = provider.GetRequiredKeyedService<IArchivist>("Archive");
         var reference = new ArchiveReference("MinIO", "existing/catalog-v1");
         Assert.Equal("Before extraction", await module.GetAsync<string>(reference));
+        using var prior = await provider.GetRequiredKeyedService<IArchiveVault>("Archive")
+            .RetrieveAsync(new ArchiveReference("adr-campus", "administration/catalog-v1"));
+        using var reader = new StreamReader(prior);
+        Assert.Equal("existing administration", await reader.ReadToEndAsync());
         await module.PutAsync("MinIO", reference.Key, "After extraction");
         Assert.Equal("After extraction", await legacy.GetAsync<string>(reference));
     }
