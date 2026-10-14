@@ -40,7 +40,10 @@ public sealed class ArchiveWebFactory : IInstitutionFactory
         Func<IServiceProvider, IInstitution?> parent)
     {
         var settings = InstitutionServiceConfiguration.Resolve(configuration, "Archive", "S3");
-        services.AddKeyedSingleton<IArchiveProvider>("Archive", (_, _) => new S3ArchiveProvider(CreateClient(settings),
+        if (string.IsNullOrWhiteSpace(settings["S3:ServiceUrl"]))
+            throw new InvalidOperationException("Archive S3 ServiceUrl is required.");
+        services.AddKeyedSingleton<IAmazonS3>("Archive", (_, _) => CreateClient(settings));
+        services.AddKeyedSingleton<IArchiveProvider>("Archive", (sp, _) => new S3ArchiveProvider(sp.GetRequiredKeyedService<IAmazonS3>("Archive"),
             "MinIO", settings.GetValue("S3:BucketName", "forge-campus-archive")!));
         services.AddKeyedSingleton<IArchiveService>("Archive", (sp, _) => new ArchiveService(sp.GetKeyedServices<IArchiveProvider>("Archive")));
         services.AddKeyedSingleton<IArchiveVault>("Archive", (sp, _) => new ArchiveVault(sp.GetKeyedServices<IArchiveProvider>("Archive").First()));
