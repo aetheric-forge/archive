@@ -1,0 +1,8 @@
+institution: archive
+version: 1.0.0
+deployment:
+  name: production
+bindings:
+  archive:
+    provider: s3
+    bucket: forge-campus-archive
